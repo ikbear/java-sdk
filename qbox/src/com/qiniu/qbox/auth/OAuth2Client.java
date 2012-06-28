@@ -1,15 +1,23 @@
 package com.qiniu.qbox.auth;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import java.net.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.http.HttpMessage;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONException;
 
 import com.qiniu.qbox.Config;
 
@@ -102,6 +110,51 @@ public class OAuth2Client extends Client {
 		return authPost(nvps);
 	}
 
+	public String exchangeBySignature(String url, HashMap<String, String> params){
+		String accessKey = Config.ACCESS_KEY;
+		byte[] secretKey = Config.SECRET_KEY.getBytes();
+		byte[] digestBase64 = {};
+		String signature;
+		
+		try {
+			URL aURL = new URL(url);
+			signature = aURL.getPath();
+			String query_string = aURL.getQuery();
+			if (query_string != null) {
+				signature += "?" + query_string;
+			}
+			signature += "\n";
+			Iterator iter = params.entrySet().iterator(); 
+			while (iter.hasNext()) { 
+			    Map.Entry entry = (Map.Entry) iter.next(); 
+			    String key = (String) entry.getKey(); 
+			    String val = (String) entry.getValue(); 
+			    signature += (key + "=" + val);
+			    if (iter.hasNext()) {
+			    	signature += "&";
+			    }
+			}
+						
+			Mac mac = Mac.getInstance("HmacSHA1");
+			SecretKeySpec keySpec = new SecretKeySpec(secretKey, "HmacSHA1");
+			mac.init(keySpec);
+			
+			byte[] signatureBase64 = Client.urlsafeEncodeBytes(signature.getBytes());
+			byte[] digest = mac.doFinal(signatureBase64);
+			digestBase64 = Client.urlsafeEncodeBytes(digest);
+	
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} 
+		
+		String digest = new String(digestBase64);
+		return accessKey + ":" + digest;
+	}
+	
 	private AuthRet authPost(List<NameValuePair> nvps) {
 		
 		CallRet ret = call(this.tokenUrl, nvps);
