@@ -1,6 +1,7 @@
 package com.qiniu.qbox.auth;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.net.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -76,7 +77,7 @@ public class OAuth2Client extends Client {
 	}
 
 	public AuthRet exchange(String code, String redirectUri) {
-		
+
 		List<NameValuePair> nvps = new ArrayList<NameValuePair>();
 		nvps.add(new BasicNameValuePair("client_id", this.clientId));
 		nvps.add(new BasicNameValuePair("client_secret", this.clientSecret));
@@ -115,7 +116,7 @@ public class OAuth2Client extends Client {
 		byte[] secretKey = Config.SECRET_KEY.getBytes();
 		byte[] digestBase64 = {};
 		String signature;
-		
+
 		try {
 			URL aURL = new URL(url);
 			signature = aURL.getPath();
@@ -124,39 +125,39 @@ public class OAuth2Client extends Client {
 				signature += "?" + query_string;
 			}
 			signature += "\n";
-			Iterator iter = params.entrySet().iterator(); 
-			while (iter.hasNext()) { 
-			    Map.Entry entry = (Map.Entry) iter.next(); 
-			    String key = (String) entry.getKey(); 
-			    String val = (String) entry.getValue(); 
+			Iterator iter = params.entrySet().iterator();
+			while (iter.hasNext()) {
+			    Map.Entry entry = (Map.Entry) iter.next();
+			    String key = (String) entry.getKey();
+			    String val = (String) entry.getValue();
 			    signature += (key + "=" + val);
 			    if (iter.hasNext()) {
 			    	signature += "&";
 			    }
 			}
-						
+
 			Mac mac = Mac.getInstance("HmacSHA1");
 			SecretKeySpec keySpec = new SecretKeySpec(secretKey, "HmacSHA1");
 			mac.init(keySpec);
-			
+
 			byte[] signatureBase64 = Client.urlsafeEncodeBytes(signature.getBytes());
 			byte[] digest = mac.doFinal(signatureBase64);
 			digestBase64 = Client.urlsafeEncodeBytes(digest);
-	
+
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (InvalidKeyException e) {
 			e.printStackTrace();
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
-		} 
-		
+		}
+
 		String digest = new String(digestBase64);
 		return accessKey + ":" + digest;
 	}
-	
+
 	private AuthRet authPost(List<NameValuePair> nvps) {
-		
+
 		CallRet ret = call(this.tokenUrl, nvps);
 		if (ret.ok()) {
 			return handleResult(ret.getResponse());
@@ -165,7 +166,7 @@ public class OAuth2Client extends Client {
 	}
 
 	private AuthRet handleResult(String responseBody) {
-		
+
 		AuthRet authRet = new AuthRet(new CallRet(200, responseBody));
 		this.accessToken = authRet.getAccessToken();
 		this.refreshToken = authRet.getRefreshToken();
